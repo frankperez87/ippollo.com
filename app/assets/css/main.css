@@ -1,0 +1,107 @@
+@import "tailwindcss";
+
+/* Class-based dark mode (toggled on <html class="dark">) instead of prefers-color-scheme. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Map semantic design tokens to Tailwind color/font utilities.
+   `inline` makes utilities emit `var(--ink)` etc. so they track the dark-mode swap below. */
+@theme inline {
+  --color-bg: var(--bg);
+  --color-bg2: var(--bg2);
+  --color-card: var(--card);
+  --color-ink: var(--ink);
+  --color-sub: var(--sub);
+  --color-yolk: var(--yolk);
+  --color-comb: var(--comb);
+
+  --font-display: "Bungee", sans-serif;
+  --font-body: "Fredoka", sans-serif;
+  --font-mono: "Space Mono", monospace;
+}
+
+/* The actual barn palette. Swaps on .dark — every token-backed utility updates instantly. */
+:root {
+  --bg: #fff3d6;
+  --bg2: #ffe19e;
+  --card: #ffffff;
+  --ink: #3a2410;
+  --sub: #9a7340;
+  --yolk: #ffc02e;
+  --comb: #ff4b2b;
+}
+
+:root.dark {
+  --bg: #160f05;
+  --bg2: #2a1a08;
+  --card: #251809;
+  --ink: #ffefcb;
+  --sub: #b6905a;
+  --yolk: #ffc53d;
+  --comb: #ff6a47;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  min-height: 100vh;
+  overflow-x: hidden;
+  background: radial-gradient(1200px 620px at 50% -8%, var(--bg2), var(--bg) 62%);
+  background-attachment: fixed;
+  color: var(--ink);
+  font-family: var(--font-body);
+  transition: background 0.35s ease, color 0.35s ease;
+}
+
+/* ---- Keyframes (ported verbatim from the design) ---- */
+@keyframes pollo-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-16px); }
+}
+@keyframes pollo-drop {
+  0% { transform: translateY(-120px) scale(0.6); opacity: 0; }
+  70% { transform: translateY(12px) scale(1.05); }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+@keyframes pollo-float {
+  0%, 100% { transform: translateY(0) rotate(-6deg); }
+  50% { transform: translateY(-22px) rotate(8deg); }
+}
+@keyframes pollo-pop {
+  0% { transform: scale(0) rotate(-12deg); opacity: 0; }
+  60% { transform: scale(1.15) rotate(4deg); }
+  100% { transform: scale(1) rotate(0); opacity: 1; }
+}
+@keyframes pollo-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+@keyframes pollo-sprint {
+  0%, 100% { transform: translateY(0) rotate(-5deg) scaleX(-1); }
+  50% { transform: translateY(-7px) rotate(5deg) scaleX(-1); }
+}
+@keyframes pollo-dust {
+  0% { transform: scale(0.6); opacity: 0.7; }
+  100% { transform: scale(1.4) translateX(-10px); opacity: 0; }
+}
+@keyframes pollo-slidein {
+  0% { transform: translateY(120%); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+/* The shimmering "clucking…" IP placeholder. */
+.pollo-ip-shimmer {
+  background: linear-gradient(90deg, var(--sub), var(--ink), var(--sub));
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: pollo-shimmer 1.4s linear infinite;
+}
