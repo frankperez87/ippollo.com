@@ -1,11 +1,9 @@
 # Fully static deploy: `nuxt generate` emits prerendered HTML + assets to .output/public.
+# Node version comes from .nvmrc (24, current LTS), which Netlify auto-detects — do not set
+# a NODE_VERSION env var here, it would override .nvmrc.
 [build]
   command = "npm run generate"
   publish = ".output/public"
-
-[build.environment]
-  NODE_VERSION = "22"
-  NPM_FLAGS = "--no-audit --no-fund"
 
 # Long-cache the fingerprinted build assets.
 [[headers]]

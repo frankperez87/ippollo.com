@@ -4,6 +4,9 @@
   "private": true,
   "type": "module",
   "description": "IP Pollo — What's your IP, pollo? 🐔 A static Nuxt site.",
+  "engines": {
+    "node": ">=20.19.0"
+  },
   "scripts": {
     "dev": "nuxt dev",
     "build": "nuxt build",
