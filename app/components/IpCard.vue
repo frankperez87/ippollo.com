@@ -1,5 +1,5 @@
 <script setup lang="ts">
-const { t, loading, ip, isDemo, copyLabel, copyIp } = usePollo()
+const { t, loading, ip, ipv6, isDemo, copyLabel, copyIp } = usePollo()
 </script>
 
 <template>
@@ -18,9 +18,21 @@ const { t, loading, ip, isDemo, copyLabel, copyIp } = usePollo()
     </div>
     <div
       v-else
-      class="my-[10px] break-all font-mono text-[clamp(30px,7.5vw,68px)] font-bold leading-[1.05] text-ink"
+      class="mb-[6px] mt-[10px] break-all font-mono text-[clamp(30px,7.5vw,68px)] font-bold leading-[1.05] text-ink"
     >
       {{ ip }}
+    </div>
+
+    <div
+      v-if="!loading && ipv6"
+      class="mb-3 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 break-all font-mono text-[clamp(12px,2.5vw,16px)] text-sub"
+    >
+      <span
+        class="rounded-md border-2 border-sub px-[6px] py-px text-[10px] font-bold uppercase tracking-[1px] opacity-80"
+      >
+        IPv6
+      </span>
+      <span>{{ ipv6 }}</span>
     </div>
 
     <button
