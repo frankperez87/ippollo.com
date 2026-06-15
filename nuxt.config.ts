@@ -15,6 +15,11 @@ export default defineNuxtConfig({
 
   // Static generation: single route, no crawling needed.
   nitro: {
+    // Pin the static preset. On Netlify, Nitro otherwise auto-detects the
+    // `netlify-static` preset, which emits to `dist` instead of `.output/public`
+    // and breaks the configured publish dir. Forcing `static` keeps the output
+    // at `.output/public` everywhere (local and CI).
+    preset: 'static',
     prerender: {
       crawlLinks: false,
       routes: ['/'],
