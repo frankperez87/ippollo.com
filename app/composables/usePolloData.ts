@@ -72,8 +72,7 @@ export const CLI: CliCmd[] = [
   { path: '/asn-org', en: 'Network operator', es: 'Operador de red' },
   { path: '/isp', en: 'ISP', es: 'ISP' },
   { path: '/ua', en: 'Your user agent', es: 'Tu user agent' },
-  { host: 'ipv4.ippollo.com', path: '', en: 'Force IPv4', es: 'Forzar IPv4' },
-  { host: 'ipv6.ippollo.com', path: '', en: 'Force IPv6', es: 'Forzar IPv6' },
+  { host: 'v4.ippollo.com', path: '', en: 'Force IPv4', es: 'Forzar IPv4' },
 ]
 
 export const STR: Record<Lang, Strings> = {
