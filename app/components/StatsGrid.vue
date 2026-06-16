@@ -4,6 +4,7 @@ const {
   flag,
   locationText,
   isp,
+  asn,
   browserName,
   osName,
   deviceType,
@@ -37,6 +38,7 @@ const {
       <div class="mt-[3px] font-body text-[20px] font-semibold text-ink">
         {{ isp }}
       </div>
+      <div v-if="asn" class="mt-1 font-mono text-[12px] text-sub">{{ asn }}</div>
     </div>
 
     <!-- Device -->

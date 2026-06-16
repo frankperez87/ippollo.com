@@ -4,6 +4,9 @@
 [build]
   command = "npm run generate"
   publish = ".output/public"
+  # CLI / JSON endpoints (ifconfig.co-style). Routing is declared in-file via the
+  # edge function's `export const config = { path: [...] }`; this just pins the dir.
+  edge_functions = "netlify/edge-functions"
 
 # Long-cache the fingerprinted build assets.
 [[headers]]

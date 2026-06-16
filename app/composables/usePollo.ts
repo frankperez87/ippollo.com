@@ -47,6 +47,7 @@ export function usePollo() {
   const country = useState<string>('pollo-country', () => '')
   const flag = useState<string>('pollo-flag', () => '')
   const isp = useState<string>('pollo-isp', () => '')
+  const asn = useState<string>('pollo-asn', () => '')
   const browserName = useState<string>('pollo-browser', () => 'Unknown')
   const osName = useState<string>('pollo-os', () => 'Unknown')
   const deviceType = useState<string>('pollo-devicetype', () => 'Desktop')
@@ -281,168 +282,91 @@ export function usePollo() {
     }
   }
 
-  const isV6 = (s: string) => !!s && s.includes(':')
   const mysteryCoop = () =>
     lang.value === 'es' ? 'Corral Misterioso' : 'Mystery Coop'
 
-  // Fetch one IP family from dedicated endpoints. api4/api6 force the connection
-  // family (their hostnames only resolve A / AAAA respectively); icanhazip is the
-  // plain-text fallback. Timed out so a missing family (e.g. no IPv6) can't stall.
-  async function fetchAddr(family: 'v4' | 'v6'): Promise<string | null> {
-    const urls =
-      family === 'v4'
-        ? ['https://api4.ipify.org?format=json', 'https://ipv4.icanhazip.com']
-        : ['https://api6.ipify.org?format=json', 'https://ipv6.icanhazip.com']
-    for (const u of urls) {
-      const ctrl = new AbortController()
-      const to = setTimeout(() => {
-        try {
-          ctrl.abort()
-        } catch {
-          /* noop */
-        }
-      }, 5000)
+  // Fetch with an abort timeout. Returns the Response, or throws.
+  async function fetchTimed(url: string, ms: number, init: RequestInit = {}) {
+    const ctrl = new AbortController()
+    const to = setTimeout(() => {
       try {
-        const r = await fetch(u, { cache: 'no-store', signal: ctrl.signal })
-        if (!r.ok) continue
-        const raw = (await r.text()).trim()
-        let val = ''
-        if (raw.startsWith('{')) {
-          try {
-            const d = JSON.parse(raw)
-            val = d && d.ip ? String(d.ip) : ''
-          } catch {
-            val = ''
-          }
-        } else {
-          val = raw
-        }
-        // Only accept an address of the family we asked for.
-        if (val && (family === 'v6') === isV6(val)) return val
+        ctrl.abort()
       } catch {
-        /* try next endpoint */
-      } finally {
-        clearTimeout(to)
+        /* noop */
       }
+    }, ms)
+    try {
+      return await fetch(url, { cache: 'no-store', signal: ctrl.signal, ...init })
+    } finally {
+      clearTimeout(to)
     }
-    return null
   }
 
-  // Geo + ISP from free, HTTPS, CORS-enabled, no-key providers. Returns the
-  // mapped record (whatever IP family the request happened to use), or null.
-  async function fetchGeo(): Promise<{
-    ip: string
-    city?: string
-    country?: string
-    cc?: string
-    isp?: string
-  } | null> {
-    const providers: { url: string; map: (d: any) => any }[] = [
-      {
-        url: 'https://ipwho.is/',
-        map: (d) =>
-          d && d.success !== false && d.ip
-            ? {
-                ip: d.ip,
-                city: d.city,
-                country: d.country,
-                cc: d.country_code,
-                isp: d.connection && (d.connection.isp || d.connection.org),
-              }
-            : null,
-      },
-      {
-        url: 'https://get.geojs.io/v1/ip/geo.json',
-        map: (d) =>
-          d && d.ip
-            ? {
-                ip: d.ip,
-                city: d.city,
-                country: d.country,
-                cc: d.country_code,
-                isp: d.organization_name || d.organization,
-              }
-            : null,
-      },
-      {
-        url: 'https://ipapi.co/json/',
-        map: (d) =>
-          d && d.ip && !d.error
-            ? {
-                ip: d.ip,
-                city: d.city,
-                country: d.country_name,
-                cc: d.country_code,
-                isp: d.org,
-              }
-            : null,
-      },
-    ]
-    for (const p of providers) {
-      try {
-        const r = await fetch(p.url, { cache: 'no-store' })
-        if (!r.ok) continue
-        const d = await r.json()
-        const m = p.map(d)
-        if (m && m.ip) return m
-      } catch {
-        /* try next provider */
-      }
-    }
-    return null
+  // Fetch a single plain-text address from a family-pinned subdomain. Fails soft
+  // (returns '') so a missing family or unconfigured DNS never blocks the UI.
+  function fetchAddr(base: string, want: 'v4' | 'v6'): Promise<string> {
+    if (!base) return Promise.resolve('')
+    return fetchTimed(`${base}/ip`, 4000)
+      .then((r) => (r.ok ? r.text() : ''))
+      .then((s) => s.trim())
+      .then((s) => (s && (want === 'v6') === s.includes(':') ? s : ''))
+      .catch(() => '')
   }
 
   // ---- IP lookup ----
-  // Always headline the IPv4; surface the IPv6 (if any) as a smaller line.
+  // First-party: our own Netlify edge function (/json) reads the client IP + geo
+  // at the edge and enriches ASN/ISP server-side. In parallel we ask the family-
+  // pinned subdomains for a guaranteed IPv4 headline (`${ipv4Url}/ip`, A-only) and
+  // IPv6 secondary (`${ipv6Url}/ip`, AAAA-only). Those calls fail soft, so if a
+  // subdomain isn't set up (or a family is unavailable) we just show what we have.
+  // If /json itself is unreachable (e.g. plain `nuxt dev`), show the demo bird.
   async function fetchIp() {
-    const [geo, v4] = await Promise.all([fetchGeo(), fetchAddr('v4')])
+    const cfg = useRuntimeConfig().public
+    const v4Url = cfg.ipv4Url as string
+    const v6Url = cfg.ipv6Url as string
+    try {
+      const jsonP = (async () => {
+        const r = await fetchTimed('/json', 6000, {
+          headers: { accept: 'application/json' },
+        })
+        if (!r.ok) throw new Error('bad status')
+        const d = await r.json()
+        if (!d || !d.ip) throw new Error('no ip')
+        return d as any
+      })()
 
-    // Nothing resolved → if there's not even an IPv6, fall back to the demo bird.
-    if (!geo && !v4) {
-      const v6only = await fetchAddr('v6')
-      if (!v6only) {
-        ip.value = '203.0.113.42'
-        ipv6.value = ''
-        flag.value = '🐔'
-        city.value = 'Polloville'
-        country.value = 'Cluckistan'
-        isp.value = 'Free-Range Fiber Co.'
-        loading.value = false
-        isDemo.value = true
-        return
-      }
-      ip.value = v6only
-      ipv6.value = ''
-      flag.value = '🌍'
-      isp.value = mysteryCoop()
+      const [d, v4, v6] = await Promise.all([
+        jsonP,
+        fetchAddr(v4Url, 'v4'),
+        fetchAddr(v6Url, 'v6'),
+      ])
+
+      // Prefer the forced-IPv4 result for the headline; fall back to whatever
+      // family the visitor connected over. Surface IPv6 as the secondary line.
+      ip.value = v4 || String(d.ip)
+      ipv6.value = v6 && v6 !== ip.value ? v6 : ''
+      city.value = d.city || ''
+      country.value = d.country || ''
+      flag.value = d.country_iso ? flagFromCode(d.country_iso) : '🌍'
+      isp.value = d.isp || d.asn_org || mysteryCoop()
+      asn.value = d.asn
+        ? d.asn_org
+          ? `AS${d.asn} · ${d.asn_org}`
+          : `AS${d.asn}`
+        : d.asn_org || ''
       loading.value = false
       isDemo.value = false
-      return
+    } catch {
+      ip.value = '203.0.113.42'
+      ipv6.value = ''
+      flag.value = '🐔'
+      city.value = 'Polloville'
+      country.value = 'Cluckistan'
+      isp.value = 'Free-Range Fiber Co.'
+      asn.value = ''
+      loading.value = false
+      isDemo.value = true
     }
-
-    if (geo) {
-      city.value = geo.city || ''
-      country.value = geo.country || ''
-      flag.value = geo.cc ? flagFromCode(geo.cc) : '🌍'
-      isp.value = geo.isp || mysteryCoop()
-    } else {
-      flag.value = '🌍'
-      isp.value = mysteryCoop()
-    }
-
-    const geoV4 = geo && geo.ip && !isV6(geo.ip) ? geo.ip : null
-    const geoV6 = geo && geo.ip && isV6(geo.ip) ? geo.ip : null
-
-    // Headline = a real IPv4 if we have one, else whatever we got.
-    ip.value = v4 || geoV4 || (geo && geo.ip) || ''
-    ipv6.value = geoV6 && geoV6 !== ip.value ? geoV6 : ''
-    loading.value = false
-    isDemo.value = false
-
-    // Resolve IPv6 in the background so a v4-only network never blocks the UI.
-    fetchAddr('v6').then((v6) => {
-      if (v6 && v6 !== ip.value) ipv6.value = v6
-    })
   }
 
   // ---- clucks ----
@@ -923,6 +847,7 @@ export function usePollo() {
     ip,
     ipv6,
     isp,
+    asn,
     flag,
     browserName,
     osName,
@@ -966,6 +891,7 @@ export function usePollo() {
     fetchIp,
     reactToChicken,
     copyIp,
+    copyText,
     rerollFact,
     copyBrag,
     runSpeedTest,

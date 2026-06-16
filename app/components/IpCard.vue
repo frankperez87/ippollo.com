@@ -30,7 +30,7 @@ const { t, loading, ip, ipv6, isDemo, copyLabel, copyIp } = usePollo()
       <span
         class="rounded-md border-2 border-sub px-[6px] py-px text-[10px] font-bold uppercase tracking-[1px] opacity-80"
       >
-        IPv6
+        {{ t.ipv6Label }}
       </span>
       <span>{{ ipv6 }}</span>
     </div>
