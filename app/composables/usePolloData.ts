@@ -48,6 +48,9 @@ export interface Strings {
   cliTitle: string
   cliHint: string
   ipv6Label: string
+  region: string
+  coords: string
+  timezone: string
 }
 
 export interface CliCmd {
@@ -130,6 +133,9 @@ export const STR: Record<Lang, Strings> = {
     cliTitle: 'Pollo from the terminal',
     cliHint: 'Prefer the command line? curl any of these. Tap to copy.',
     ipv6Label: 'IPv6',
+    region: 'Pollo Province',
+    coords: 'Coop Coordinates',
+    timezone: 'Pollo Time Zone',
   },
   es: {
     tagline: '¿Cuál es tu IP, pollo? 🐔',
@@ -186,6 +192,9 @@ export const STR: Record<Lang, Strings> = {
     cliTitle: 'Pollo desde la terminal',
     cliHint: '¿Prefieres la línea de comandos? Haz curl a cualquiera. Toca para copiar.',
     ipv6Label: 'IPv6',
+    region: 'Provincia Pollo',
+    coords: 'Coordenadas del Corral',
+    timezone: 'Zona Horaria Pollo',
   },
 }
 
@@ -348,11 +357,15 @@ export const PRIV: Record<Lang, PrivacySection[]> = {
   en: [
     {
       h: 'The short version',
-      b: "ippollo.com shows you your own IP address, rough location, ISP and a silly chicken rating. It runs on a small edge endpoint that reads your IP on the fly to answer your request — and stores none of it.",
+      b: "ippollo.com shows you your own IP address, approximate location (city, region, postal area and rough coordinates), network/ISP and a silly chicken rating. It runs on a small edge endpoint that reads your IP on the fly to answer your request — and stores none of it.",
     },
     {
       h: 'What leaves your browser',
-      b: "Your browser asks ippollo.com's own endpoint for your IP and rough location; Netlify's edge sees your IP to answer the request (that's just how the web works) and we don't keep it. To name your network (ASN/ISP) we look it up server-side via ipwho.is, and the speed test transfers test data with Cloudflare (speed.cloudflare.com). Those providers receive your IP to do their job — see their own privacy policies.",
+      b: "Your browser asks ippollo.com's own endpoint for your IP and approximate location; Netlify's edge sees your IP to answer the request (that's just how the web works) and we don't keep it. The location (city/region/coordinates) is estimated from your IP by Netlify and is approximate, not GPS. To name your network (ASN/ISP) we look it up server-side via ipwho.is, and the speed test transfers test data with Cloudflare (speed.cloudflare.com). Those providers receive your IP to do their job — see their own privacy policies.",
+    },
+    {
+      h: 'The terminal / API',
+      b: "The same details are available as a small public API for command-line fans (e.g. curl https://ippollo.com/json). It only ever returns information about your own connection — there's no database to query, no logins, and no way to look up anyone else. It's free and best-effort: please don't hammer it, and it's provided as-is with no uptime promise.",
     },
     {
       h: 'Cookies & Google Analytics',
@@ -374,11 +387,15 @@ export const PRIV: Record<Lang, PrivacySection[]> = {
   es: [
     {
       h: 'La versión corta',
-      b: 'ippollo.com te muestra tu propia dirección IP, ubicación aproximada, proveedor (ISP) y una calificación pollo absurda. Funciona con un pequeño endpoint en el edge que lee tu IP al momento para responder tu solicitud — y no guarda nada de eso.',
+      b: 'ippollo.com te muestra tu propia dirección IP, ubicación aproximada (ciudad, región, zona postal y coordenadas aproximadas), red/ISP y una calificación pollo absurda. Funciona con un pequeño endpoint en el edge que lee tu IP al momento para responder tu solicitud — y no guarda nada de eso.',
     },
     {
       h: 'Qué sale de tu navegador',
-      b: 'Tu navegador le pide a un endpoint propio de ippollo.com tu IP y ubicación aproximada; el edge de Netlify ve tu IP para responder (así funciona la web) y no la guardamos. Para identificar tu red (ASN/ISP) la consultamos del lado del servidor vía ipwho.is, y la prueba de velocidad transfiere datos de prueba con Cloudflare (speed.cloudflare.com). Esos proveedores reciben tu IP para funcionar — consulta sus propias políticas de privacidad.',
+      b: 'Tu navegador le pide a un endpoint propio de ippollo.com tu IP y ubicación aproximada; el edge de Netlify ve tu IP para responder (así funciona la web) y no la guardamos. La ubicación (ciudad/región/coordenadas) la estima Netlify a partir de tu IP y es aproximada, no GPS. Para identificar tu red (ASN/ISP) la consultamos del lado del servidor vía ipwho.is, y la prueba de velocidad transfiere datos de prueba con Cloudflare (speed.cloudflare.com). Esos proveedores reciben tu IP para funcionar — consulta sus propias políticas de privacidad.',
+    },
+    {
+      h: 'La terminal / API',
+      b: 'Los mismos datos están disponibles como una pequeña API pública para fans de la línea de comandos (p. ej. curl https://ippollo.com/json). Solo devuelve información de tu propia conexión — no hay base de datos que consultar, ni inicios de sesión, ni forma de buscar a nadie más. Es gratis y de mejor esfuerzo: por favor no la satures, y se ofrece tal cual, sin garantía de disponibilidad.',
     },
     {
       h: 'Cookies y Google Analytics',

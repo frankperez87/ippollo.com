@@ -48,6 +48,11 @@ export function usePollo() {
   const flag = useState<string>('pollo-flag', () => '')
   const isp = useState<string>('pollo-isp', () => '')
   const asn = useState<string>('pollo-asn', () => '')
+  const region = useState<string>('pollo-region', () => '')
+  const postal = useState<string>('pollo-postal', () => '')
+  const lat = useState<number | null>('pollo-lat', () => null)
+  const lon = useState<number | null>('pollo-lon', () => null)
+  const timezone = useState<string>('pollo-timezone', () => '')
   const browserName = useState<string>('pollo-browser', () => 'Unknown')
   const osName = useState<string>('pollo-os', () => 'Unknown')
   const deviceType = useState<string>('pollo-devicetype', () => 'Desktop')
@@ -164,6 +169,21 @@ export function usePollo() {
       (lang.value === 'es' ? 'En algún gallinero' : 'Somewhere in a coop')
     )
   })
+
+  // Extra geo details (only rendered when present).
+  const regionText = computed(() =>
+    [region.value, postal.value].filter(Boolean).join(' · '),
+  )
+  const coordsText = computed(() =>
+    lat.value != null && lon.value != null
+      ? `${lat.value.toFixed(3)}, ${lon.value.toFixed(3)}`
+      : '',
+  )
+  const mapsUrl = computed(() =>
+    lat.value != null && lon.value != null
+      ? `https://www.openstreetmap.org/?mlat=${lat.value}&mlon=${lon.value}#map=11/${lat.value}/${lon.value}`
+      : '',
+  )
 
   const fact = computed(
     () => FACTS[lang.value][factIndex.value % FACTS[lang.value].length],
@@ -357,6 +377,11 @@ export function usePollo() {
           ? `AS${d.asn} · ${d.asn_org}`
           : `AS${d.asn}`
         : d.asn_org || ''
+      region.value = d.region || ''
+      postal.value = d.postal_code || ''
+      lat.value = typeof d.latitude === 'number' ? d.latitude : null
+      lon.value = typeof d.longitude === 'number' ? d.longitude : null
+      timezone.value = d.timezone || ''
       loading.value = false
       isDemo.value = false
     } catch {
@@ -367,6 +392,11 @@ export function usePollo() {
       country.value = 'Cluckistan'
       isp.value = 'Free-Range Fiber Co.'
       asn.value = ''
+      region.value = ''
+      postal.value = ''
+      lat.value = null
+      lon.value = null
+      timezone.value = ''
       loading.value = false
       isDemo.value = true
     }
@@ -874,6 +904,10 @@ export function usePollo() {
     ratingEggs,
     ratingProgress,
     locationText,
+    regionText,
+    coordsText,
+    mapsUrl,
+    timezone,
     fact,
     langLabel,
     darkLabel,
