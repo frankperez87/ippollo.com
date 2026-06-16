@@ -284,35 +284,54 @@ export function usePollo() {
   const mysteryCoop = () =>
     lang.value === 'es' ? 'Corral Misterioso' : 'Mystery Coop'
 
-  // ---- IP lookup ----
-  // First-party: our own Netlify edge function (/json) reads the real client IP +
-  // geo at the edge and enriches ASN/ISP server-side. If it's unreachable (e.g.
-  // plain `nuxt dev` with no Netlify runtime), fall back to the demo bird.
-  async function fetchIp() {
-    try {
-      const ctrl = new AbortController()
-      const to = setTimeout(() => {
-        try {
-          ctrl.abort()
-        } catch {
-          /* noop */
-        }
-      }, 6000)
-      let d: any
+  // Fetch with an abort timeout. Returns the Response, or throws.
+  async function fetchTimed(url: string, ms: number, init: RequestInit = {}) {
+    const ctrl = new AbortController()
+    const to = setTimeout(() => {
       try {
-        const r = await fetch('/json', {
-          cache: 'no-store',
+        ctrl.abort()
+      } catch {
+        /* noop */
+      }
+    }, ms)
+    try {
+      return await fetch(url, { cache: 'no-store', signal: ctrl.signal, ...init })
+    } finally {
+      clearTimeout(to)
+    }
+  }
+
+  // ---- IP lookup ----
+  // First-party: our own Netlify edge function (/json) reads the client IP + geo
+  // at the edge and enriches ASN/ISP server-side. In parallel we ask the A-only
+  // v4 subdomain (`${ipv4Url}/ip`) for a guaranteed-IPv4 headline; that call fails
+  // soft, so if the subdomain isn't set up yet we just show the connecting IP.
+  // If /json itself is unreachable (e.g. plain `nuxt dev`), show the demo bird.
+  async function fetchIp() {
+    const v4Url = useRuntimeConfig().public.ipv4Url as string
+    try {
+      const jsonP = (async () => {
+        const r = await fetchTimed('/json', 6000, {
           headers: { accept: 'application/json' },
-          signal: ctrl.signal,
         })
         if (!r.ok) throw new Error('bad status')
-        d = await r.json()
-      } finally {
-        clearTimeout(to)
-      }
-      if (!d || !d.ip) throw new Error('no ip')
+        const d = await r.json()
+        if (!d || !d.ip) throw new Error('no ip')
+        return d as any
+      })()
 
-      ip.value = String(d.ip)
+      const v4P = v4Url
+        ? fetchTimed(`${v4Url}/ip`, 4000)
+            .then((r) => (r.ok ? r.text() : ''))
+            .then((s) => s.trim())
+            .catch(() => '')
+        : Promise.resolve('')
+
+      const [d, v4] = await Promise.all([jsonP, v4P])
+
+      // Prefer the forced-IPv4 result for the headline; fall back to whatever
+      // family the visitor connected over.
+      ip.value = v4 && !v4.includes(':') ? v4 : String(d.ip)
       city.value = d.city || ''
       country.value = d.country || ''
       flag.value = d.country_iso ? flagFromCode(d.country_iso) : '🌍'
