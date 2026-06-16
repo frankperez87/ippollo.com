@@ -36,7 +36,7 @@ export default defineNuxtConfig({
       // browser can fetch a guaranteed-IPv4 headline from `${ipv4Url}/ip`.
       // The lookup fails soft, so the app still works before this DNS exists.
       // Set NUXT_PUBLIC_IPV4_URL='' to disable and just show the connecting IP.
-      ipv4Url: 'https://v4.ippollo.com',
+      ipv4Url: 'https://ipv4.ippollo.com',
     },
   },
 

@@ -304,7 +304,7 @@ export function usePollo() {
   // ---- IP lookup ----
   // First-party: our own Netlify edge function (/json) reads the client IP + geo
   // at the edge and enriches ASN/ISP server-side. In parallel we ask the A-only
-  // v4 subdomain (`${ipv4Url}/ip`) for a guaranteed-IPv4 headline; that call fails
+  // ipv4 subdomain (`${ipv4Url}/ip`) for a guaranteed-IPv4 headline; that call fails
   // soft, so if the subdomain isn't set up yet we just show the connecting IP.
   // If /json itself is unreachable (e.g. plain `nuxt dev`), show the demo bird.
   async function fetchIp() {
