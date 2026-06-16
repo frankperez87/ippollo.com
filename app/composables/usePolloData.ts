@@ -314,11 +314,11 @@ export const PRIV: Record<Lang, PrivacySection[]> = {
   en: [
     {
       h: 'The short version',
-      b: "ippollo.com shows you your own IP address, rough location, ISP and a silly chicken rating. We don't run a server of our own and we don't store any of it.",
+      b: "ippollo.com shows you your own IP address, rough location, ISP and a silly chicken rating. It runs on a small edge endpoint that reads your IP on the fly to answer your request — and stores none of it.",
     },
     {
       h: 'What leaves your browser',
-      b: 'To look up your IP, location and ISP, your browser calls public services: ipwho.is, geojs.io and ipapi.co. To measure your speed it transfers test data with Cloudflare (speed.cloudflare.com). These services necessarily receive your IP address to do their job — see their own privacy policies.',
+      b: "Your browser asks ippollo.com's own endpoint for your IP and rough location; Netlify's edge sees your IP to answer the request (that's just how the web works) and we don't keep it. To name your network (ASN/ISP) we look it up server-side via ipwho.is, and the speed test transfers test data with Cloudflare (speed.cloudflare.com). Those providers receive your IP to do their job — see their own privacy policies.",
     },
     {
       h: 'Cookies & Google Analytics',
@@ -340,11 +340,11 @@ export const PRIV: Record<Lang, PrivacySection[]> = {
   es: [
     {
       h: 'La versión corta',
-      b: 'ippollo.com te muestra tu propia dirección IP, ubicación aproximada, proveedor (ISP) y una calificación pollo absurda. No tenemos servidor propio y no guardamos nada de eso.',
+      b: 'ippollo.com te muestra tu propia dirección IP, ubicación aproximada, proveedor (ISP) y una calificación pollo absurda. Funciona con un pequeño endpoint en el edge que lee tu IP al momento para responder tu solicitud — y no guarda nada de eso.',
     },
     {
       h: 'Qué sale de tu navegador',
-      b: 'Para consultar tu IP, ubicación e ISP, tu navegador llama a servicios públicos: ipwho.is, geojs.io e ipapi.co. Para medir tu velocidad transfiere datos de prueba con Cloudflare (speed.cloudflare.com). Estos servicios reciben necesariamente tu dirección IP para funcionar — consulta sus propias políticas de privacidad.',
+      b: 'Tu navegador le pide a un endpoint propio de ippollo.com tu IP y ubicación aproximada; el edge de Netlify ve tu IP para responder (así funciona la web) y no la guardamos. Para identificar tu red (ASN/ISP) la consultamos del lado del servidor vía ipwho.is, y la prueba de velocidad transfiere datos de prueba con Cloudflare (speed.cloudflare.com). Esos proveedores reciben tu IP para funcionar — consulta sus propias políticas de privacidad.',
     },
     {
       h: 'Cookies y Google Analytics',
