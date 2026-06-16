@@ -45,7 +45,36 @@ export interface Strings {
   saveCard: string
   cluckHint: string
   speedWait: string
+  cliTitle: string
+  cliHint: string
+  ipv6Label: string
 }
+
+export interface CliCmd {
+  host?: string // overrides the base host (e.g. force a family)
+  path: string
+  en: string
+  es: string
+}
+
+// Documented CLI endpoints, rendered as copyable `curl` examples.
+export const CLI: CliCmd[] = [
+  { path: '', en: 'Your IP address', es: 'Tu dirección IP' },
+  { path: '/json', en: 'Everything, as JSON', es: 'Todo, en JSON' },
+  { path: '/ip', en: 'IP only', es: 'Solo la IP' },
+  { path: '/country', en: 'Country', es: 'País' },
+  { path: '/country-iso', en: 'Country code', es: 'Código de país' },
+  { path: '/city', en: 'City', es: 'Ciudad' },
+  { path: '/region', en: 'Region', es: 'Región' },
+  { path: '/timezone', en: 'Time zone', es: 'Zona horaria' },
+  { path: '/coords', en: 'Latitude, longitude', es: 'Latitud, longitud' },
+  { path: '/asn', en: 'Network (ASN)', es: 'Red (ASN)' },
+  { path: '/asn-org', en: 'Network operator', es: 'Operador de red' },
+  { path: '/isp', en: 'ISP', es: 'ISP' },
+  { path: '/ua', en: 'Your user agent', es: 'Tu user agent' },
+  { host: 'ipv4.ippollo.com', path: '', en: 'Force IPv4', es: 'Forzar IPv4' },
+  { host: 'ipv6.ippollo.com', path: '', en: 'Force IPv6', es: 'Forzar IPv6' },
+]
 
 export const STR: Record<Lang, Strings> = {
   en: {
@@ -99,6 +128,9 @@ export const STR: Record<Lang, Strings> = {
     saveCard: '📸 Save card',
     cluckHint: '👆 Cluck the chicken to level up your eggs',
     speedWait: '⏳ Race again in',
+    cliTitle: 'Pollo from the terminal',
+    cliHint: 'Prefer the command line? curl any of these. Tap to copy.',
+    ipv6Label: 'IPv6',
   },
   es: {
     tagline: '¿Cuál es tu IP, pollo? 🐔',
@@ -152,6 +184,9 @@ export const STR: Record<Lang, Strings> = {
     saveCard: '📸 Guardar tarjeta',
     cluckHint: '👆 Cacarea al pollo para subir tus huevos',
     speedWait: '⏳ Otra vez en',
+    cliTitle: 'Pollo desde la terminal',
+    cliHint: '¿Prefieres la línea de comandos? Haz curl a cualquiera. Toca para copiar.',
+    ipv6Label: 'IPv6',
   },
 }
 

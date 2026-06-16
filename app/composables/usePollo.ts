@@ -41,7 +41,8 @@ export function usePollo() {
   const lang = useState<Lang>('pollo-lang', () => 'en')
   const dark = useState<boolean>('pollo-dark', () => false)
 
-  const ip = useState<string>('pollo-ip', () => '')
+  const ip = useState<string>('pollo-ip', () => '') // headline = IPv4
+  const ipv6 = useState<string>('pollo-ipv6', () => '') // secondary, when present
   const city = useState<string>('pollo-city', () => '')
   const country = useState<string>('pollo-country', () => '')
   const flag = useState<string>('pollo-flag', () => '')
@@ -301,14 +302,28 @@ export function usePollo() {
     }
   }
 
+  // Fetch a single plain-text address from a family-pinned subdomain. Fails soft
+  // (returns '') so a missing family or unconfigured DNS never blocks the UI.
+  function fetchAddr(base: string, want: 'v4' | 'v6'): Promise<string> {
+    if (!base) return Promise.resolve('')
+    return fetchTimed(`${base}/ip`, 4000)
+      .then((r) => (r.ok ? r.text() : ''))
+      .then((s) => s.trim())
+      .then((s) => (s && (want === 'v6') === s.includes(':') ? s : ''))
+      .catch(() => '')
+  }
+
   // ---- IP lookup ----
   // First-party: our own Netlify edge function (/json) reads the client IP + geo
-  // at the edge and enriches ASN/ISP server-side. In parallel we ask the A-only
-  // ipv4 subdomain (`${ipv4Url}/ip`) for a guaranteed-IPv4 headline; that call fails
-  // soft, so if the subdomain isn't set up yet we just show the connecting IP.
+  // at the edge and enriches ASN/ISP server-side. In parallel we ask the family-
+  // pinned subdomains for a guaranteed IPv4 headline (`${ipv4Url}/ip`, A-only) and
+  // IPv6 secondary (`${ipv6Url}/ip`, AAAA-only). Those calls fail soft, so if a
+  // subdomain isn't set up (or a family is unavailable) we just show what we have.
   // If /json itself is unreachable (e.g. plain `nuxt dev`), show the demo bird.
   async function fetchIp() {
-    const v4Url = useRuntimeConfig().public.ipv4Url as string
+    const cfg = useRuntimeConfig().public
+    const v4Url = cfg.ipv4Url as string
+    const v6Url = cfg.ipv6Url as string
     try {
       const jsonP = (async () => {
         const r = await fetchTimed('/json', 6000, {
@@ -320,18 +335,16 @@ export function usePollo() {
         return d as any
       })()
 
-      const v4P = v4Url
-        ? fetchTimed(`${v4Url}/ip`, 4000)
-            .then((r) => (r.ok ? r.text() : ''))
-            .then((s) => s.trim())
-            .catch(() => '')
-        : Promise.resolve('')
-
-      const [d, v4] = await Promise.all([jsonP, v4P])
+      const [d, v4, v6] = await Promise.all([
+        jsonP,
+        fetchAddr(v4Url, 'v4'),
+        fetchAddr(v6Url, 'v6'),
+      ])
 
       // Prefer the forced-IPv4 result for the headline; fall back to whatever
-      // family the visitor connected over.
-      ip.value = v4 && !v4.includes(':') ? v4 : String(d.ip)
+      // family the visitor connected over. Surface IPv6 as the secondary line.
+      ip.value = v4 || String(d.ip)
+      ipv6.value = v6 && v6 !== ip.value ? v6 : ''
       city.value = d.city || ''
       country.value = d.country || ''
       flag.value = d.country_iso ? flagFromCode(d.country_iso) : '🌍'
@@ -345,6 +358,7 @@ export function usePollo() {
       isDemo.value = false
     } catch {
       ip.value = '203.0.113.42'
+      ipv6.value = ''
       flag.value = '🐔'
       city.value = 'Polloville'
       country.value = 'Cluckistan'
@@ -831,6 +845,7 @@ export function usePollo() {
     lang,
     dark,
     ip,
+    ipv6,
     isp,
     asn,
     flag,
@@ -876,6 +891,7 @@ export function usePollo() {
     fetchIp,
     reactToChicken,
     copyIp,
+    copyText,
     rerollFact,
     copyBrag,
     runSpeedTest,

@@ -51,6 +51,7 @@ onBeforeUnmount(() => pollo.dispose())
       <StatsGrid />
       <FortuneCard />
       <SpeedTest />
+      <CliCard />
       <BragCard />
       <PolloFooter />
     </div>

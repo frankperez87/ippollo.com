@@ -32,11 +32,13 @@ export default defineNuxtConfig({
     public: {
       siteUrl: 'https://ippollo.com',
       gaId: 'G-ZDWDGMS0G6',
-      // A-only subdomain (no AAAA) that runs the same edge function, so the
-      // browser can fetch a guaranteed-IPv4 headline from `${ipv4Url}/ip`.
-      // The lookup fails soft, so the app still works before this DNS exists.
-      // Set NUXT_PUBLIC_IPV4_URL='' to disable and just show the connecting IP.
+      // Family-pinned subdomains that run the same edge function: ipv4 is A-only
+      // (no AAAA), ipv6 is AAAA-only (no A). The browser fetches the IPv4 headline
+      // from `${ipv4Url}/ip` and the IPv6 secondary from `${ipv6Url}/ip`. Both
+      // lookups fail soft, so the app still works before this DNS exists. Set
+      // NUXT_PUBLIC_IPV4_URL / NUXT_PUBLIC_IPV6_URL to '' to disable either.
       ipv4Url: 'https://ipv4.ippollo.com',
+      ipv6Url: 'https://ipv6.ippollo.com',
     },
   },
 
