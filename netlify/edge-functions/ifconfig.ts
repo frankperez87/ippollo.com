@@ -89,6 +89,61 @@ async function enrich(ip: string): Promise<{
   }
 }
 
+// Parse a User-Agent header into ifconfig.co-style parts.
+function parseUA(ua: string) {
+  const raw_value = ua || ''
+  let product = ''
+  let version = ''
+  let comment = ''
+  const head = raw_value.match(/^([^/\s]+)(?:\/(\S+))?/)
+  if (head) {
+    product = head[1] || ''
+    version = head[2] || ''
+  }
+  const c = raw_value.match(/\(([^)]*)\)/)
+  if (c) comment = c[1]
+  return { product, version, comment, raw_value }
+}
+
+// Expand an IPv6 string to its 8 hextet groups (handles `::`).
+function expandV6(ip: string): string[] {
+  const addr = ip.split('%')[0]
+  const dbl = addr.includes('::')
+  const [headStr, tailStr] = dbl ? addr.split('::') : [addr, null]
+  const head = headStr ? headStr.split(':') : []
+  const tail = tailStr ? tailStr.split(':') : []
+  if (!dbl) return head
+  const missing = 8 - head.length - tail.length
+  if (missing < 0) return []
+  return [...head, ...Array(missing).fill('0'), ...tail]
+}
+
+// The IP as a single integer (IPv4 = 32-bit, IPv6 = 128-bit) in decimal, as a
+// string (so the 128-bit value survives). Returns null if it can't be parsed.
+function ipDecimal(ip: string): string | null {
+  if (!ip) return null
+  try {
+    if (ip.includes(':')) {
+      const groups = expandV6(ip)
+      if (groups.length !== 8) return null
+      let n = 0n
+      for (const g of groups) n = (n << 16n) + BigInt(parseInt(g || '0', 16))
+      return n.toString()
+    }
+    const octets = ip.split('.')
+    if (octets.length !== 4) return null
+    let n = 0n
+    for (const part of octets) {
+      const x = Number(part)
+      if (!Number.isInteger(x) || x < 0 || x > 255) return null
+      n = (n << 8n) + BigInt(x)
+    }
+    return n.toString()
+  } catch {
+    return null
+  }
+}
+
 export default async (request: Request, context: Context): Promise<Response | void> => {
   const { pathname } = new URL(request.url)
   const ip = context.ip
@@ -119,11 +174,11 @@ export default async (request: Request, context: Context): Promise<Response | vo
   if (pathname === '/json') {
     const extra = await enrich(ip)
     // A single connection only exposes one family. `ip` is whatever you
-    // connected over; `ipv4`/`ipv6` label it. Hit ipv4./ipv6.ippollo.com to
-    // force a family (that's how the website shows both at once).
+    // connected over; `ipv4`/`ipv6` label it. Hit v4.ippollo.com to force IPv4.
     const isV6 = ip.includes(':')
-    return json({
+    const body = {
       ip,
+      ip_decimal: '__IPDEC__', // placeholder → replaced with an unquoted number
       ipv4: isV6 ? null : ip,
       ipv6: isV6 ? ip : null,
       country: g.country?.name ?? null,
@@ -135,11 +190,17 @@ export default async (request: Request, context: Context): Promise<Response | vo
       latitude: g.latitude ?? null,
       longitude: g.longitude ?? null,
       timezone: g.timezone ?? null,
-      hostname: null, // reverse DNS not resolvable at the edge (v1)
-      user_agent: ua,
+      user_agent: parseUA(ua),
       asn: extra.asn,
       asn_org: extra.asn_org,
       isp: extra.isp,
+    }
+    const s = JSON.stringify(body, null, 2).replace(
+      '"__IPDEC__"',
+      ipDecimal(ip) ?? 'null',
+    )
+    return new Response(s + '\n', {
+      headers: { 'content-type': 'application/json; charset=utf-8', ...CORS },
     })
   }
 

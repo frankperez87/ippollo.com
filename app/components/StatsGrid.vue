@@ -3,6 +3,10 @@ const {
   t,
   flag,
   locationText,
+  regionText,
+  coordsText,
+  mapsUrl,
+  timezone,
   isp,
   asn,
   browserName,
@@ -26,6 +30,53 @@ const {
       </div>
       <div class="mt-[3px] font-body text-[20px] font-semibold text-ink">
         {{ flag }} {{ locationText }}
+      </div>
+    </div>
+
+    <!-- Region + postal -->
+    <div
+      v-if="regionText"
+      class="rounded-[18px] border-[3px] border-ink bg-card p-5 shadow-[6px_6px_0_var(--ink)]"
+    >
+      <div class="text-[28px]">🗺️</div>
+      <div class="mt-[6px] font-body text-[12px] font-bold uppercase tracking-[1.5px] text-sub">
+        {{ t.region }}
+      </div>
+      <div class="mt-[3px] font-body text-[20px] font-semibold text-ink">
+        {{ regionText }}
+      </div>
+    </div>
+
+    <!-- Coordinates -->
+    <div
+      v-if="coordsText"
+      class="rounded-[18px] border-[3px] border-ink bg-card p-5 shadow-[6px_6px_0_var(--ink)]"
+    >
+      <div class="text-[28px]">🧭</div>
+      <div class="mt-[6px] font-body text-[12px] font-bold uppercase tracking-[1.5px] text-sub">
+        {{ t.coords }}
+      </div>
+      <a
+        :href="mapsUrl"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="mt-[3px] inline-block font-mono text-[18px] font-semibold text-ink underline decoration-dotted underline-offset-4"
+      >
+        {{ coordsText }}
+      </a>
+    </div>
+
+    <!-- Time zone -->
+    <div
+      v-if="timezone"
+      class="rounded-[18px] border-[3px] border-ink bg-card p-5 shadow-[6px_6px_0_var(--ink)]"
+    >
+      <div class="text-[28px]">🕐</div>
+      <div class="mt-[6px] font-body text-[12px] font-bold uppercase tracking-[1.5px] text-sub">
+        {{ t.timezone }}
+      </div>
+      <div class="mt-[3px] font-mono text-[18px] font-semibold text-ink">
+        {{ timezone }}
       </div>
     </div>
 
