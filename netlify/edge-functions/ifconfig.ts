@@ -118,8 +118,14 @@ export default async (request: Request, context: Context): Promise<Response | vo
   // Endpoints that need ASN/ISP enrichment.
   if (pathname === '/json') {
     const extra = await enrich(ip)
+    // A single connection only exposes one family. `ip` is whatever you
+    // connected over; `ipv4`/`ipv6` label it. Hit ipv4./ipv6.ippollo.com to
+    // force a family (that's how the website shows both at once).
+    const isV6 = ip.includes(':')
     return json({
       ip,
+      ipv4: isV6 ? null : ip,
+      ipv6: isV6 ? ip : null,
       country: g.country?.name ?? null,
       country_iso: g.country?.code ?? null,
       region: g.subdivision?.name ?? null,

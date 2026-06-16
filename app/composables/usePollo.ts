@@ -315,11 +315,11 @@ export function usePollo() {
 
   // ---- IP lookup ----
   // First-party: our own Netlify edge function (/json) reads the client IP + geo
-  // at the edge and enriches ASN/ISP server-side. In parallel we ask the family-
-  // pinned subdomains for a guaranteed IPv4 headline (`${ipv4Url}/ip`, A-only) and
-  // IPv6 secondary (`${ipv6Url}/ip`, AAAA-only). Those calls fail soft, so if a
-  // subdomain isn't set up (or a family is unavailable) we just show what we have.
-  // If /json itself is unreachable (e.g. plain `nuxt dev`), show the demo bird.
+  // at the edge and enriches ASN/ISP server-side. In parallel we ask the A-only
+  // v4 subdomain (`${ipv4Url}/ip`) for a guaranteed-IPv4 headline. The IPv6
+  // secondary comes from the apex /json connecting IP (the apex is dual-stack),
+  // or from `${ipv6Url}/ip` if a v6-capable host is configured. Those extra calls
+  // fail soft. If /json itself is unreachable (plain `nuxt dev`), show the demo bird.
   async function fetchIp() {
     const cfg = useRuntimeConfig().public
     const v4Url = cfg.ipv4Url as string
@@ -341,10 +341,13 @@ export function usePollo() {
         fetchAddr(v6Url, 'v6'),
       ])
 
-      // Prefer the forced-IPv4 result for the headline; fall back to whatever
-      // family the visitor connected over. Surface IPv6 as the secondary line.
-      ip.value = v4 || String(d.ip)
-      ipv6.value = v6 && v6 !== ip.value ? v6 : ''
+      // Headline = forced IPv4; fall back to whatever family the visitor connected
+      // over. IPv6 line = a forced v6 result, else the apex connection if it was v6.
+      const conn = String(d.ip)
+      const connV6 = conn.includes(':') ? conn : ''
+      ip.value = v4 || conn
+      const v6addr = v6 || connV6
+      ipv6.value = v6addr && v6addr !== ip.value ? v6addr : ''
       city.value = d.city || ''
       country.value = d.country || ''
       flag.value = d.country_iso ? flagFromCode(d.country_iso) : '🌍'

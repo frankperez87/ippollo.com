@@ -32,13 +32,14 @@ export default defineNuxtConfig({
     public: {
       siteUrl: 'https://ippollo.com',
       gaId: 'G-ZDWDGMS0G6',
-      // Family-pinned subdomains that run the same edge function: ipv4 is A-only
-      // (no AAAA), ipv6 is AAAA-only (no A). The browser fetches the IPv4 headline
-      // from `${ipv4Url}/ip` and the IPv6 secondary from `${ipv6Url}/ip`. Both
-      // lookups fail soft, so the app still works before this DNS exists. Set
-      // NUXT_PUBLIC_IPV4_URL / NUXT_PUBLIC_IPV6_URL to '' to disable either.
-      ipv4Url: 'https://ipv4.ippollo.com',
-      ipv6Url: 'https://ipv6.ippollo.com',
+      // A-only subdomain (no AAAA) that runs the same edge function, so the
+      // browser can fetch a guaranteed-IPv4 headline from `${ipv4Url}/ip`.
+      // The lookup fails soft, so the app still works if it's unreachable.
+      ipv4Url: 'https://v4.ippollo.com',
+      // The IPv6 secondary line is taken from the apex /json connecting IP
+      // (the apex is dual-stack once IPv6 is enabled), since Netlify can't host a
+      // v6-only subdomain. Set this to a v6-capable host to force a fresh lookup.
+      ipv6Url: '',
     },
   },
 

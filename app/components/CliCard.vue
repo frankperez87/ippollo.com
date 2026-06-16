@@ -10,7 +10,8 @@ const host = (useRuntimeConfig().public.siteUrl as string)
 
 const commands = computed(() =>
   CLI.map((c) => ({
-    cmd: `curl ${c.host || host}${c.path}`,
+    // Include the scheme so a copied command doesn't hit the HTTP→HTTPS redirect.
+    cmd: `curl https://${c.host || host}${c.path}`,
     desc: lang.value === 'es' ? c.es : c.en,
   })),
 )
