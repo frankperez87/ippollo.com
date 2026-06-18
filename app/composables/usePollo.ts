@@ -616,35 +616,70 @@ export function usePollo() {
     return (received * 8) / active / 1e6
   }
 
-  async function measureUp(): Promise<number | null> {
-    const bytes = 6000000
-    const body = new Uint8Array(bytes)
-    const ctrl = new AbortController()
-    const to = setTimeout(() => {
-      try {
-        ctrl.abort()
-      } catch {
-        /* noop */
-      }
-    }, 9000)
+  async function measureUp(
+    onProgress: (mbps: number, wall: number, max: number) => void,
+  ): Promise<number | null> {
+    // Mirror measureDown: a single short POST never escapes TCP slow-start and
+    // its fixed round-trip latency dominates, so loop fixed-size chunks over a
+    // time budget, adapting chunk size to the measured rate. Each chunk retries
+    // with backoff on transient failure; throughput is over ACTIVE transfer time.
     const t0 = performance.now()
-    try {
-      const r = await fetch('https://speed.cloudflare.com/__up', {
-        method: 'POST',
-        body,
-        cache: 'no-store',
-        signal: ctrl.signal,
-      })
-      if (!r.ok) throw new Error('HTTP ' + r.status)
-    } catch {
-      clearTimeout(to)
-      return null
-    } finally {
-      clearTimeout(to)
+    const budgetMs = 7000
+    const buf = new Uint8Array(25000000)
+    let sent = 0
+    let activeMs = 0
+    let chunk = 2000000
+    let fails = 0
+    while (performance.now() - t0 < budgetMs) {
+      const cs = performance.now()
+      let ok = false
+      const ctrl = new AbortController()
+      const to = setTimeout(() => {
+        try {
+          ctrl.abort()
+        } catch {
+          /* noop */
+        }
+      }, 9000)
+      try {
+        const r = await fetch('https://speed.cloudflare.com/__up', {
+          method: 'POST',
+          body: buf.subarray(0, chunk),
+          cache: 'no-store',
+          signal: ctrl.signal,
+        })
+        if (!r.ok) throw new Error('HTTP ' + r.status)
+        ok = true
+      } catch {
+        ok = false
+      } finally {
+        clearTimeout(to)
+      }
+
+      if (ok) {
+        const cd = performance.now() - cs
+        sent += chunk
+        activeMs += cd
+        fails = 0
+        const wall = (performance.now() - t0) / 1000
+        const active = activeMs / 1000
+        if (onProgress && active > 0)
+          onProgress((sent * 8) / active / 1e6, wall, budgetMs / 1000)
+        if (cd > 0)
+          chunk = Math.min(
+            25000000,
+            Math.max(2000000, Math.round((chunk / (cd / 1000)) * 1.0)),
+          )
+      } else {
+        fails++
+        if (fails >= 4) break
+        chunk = Math.max(2000000, Math.round(chunk / 2))
+        await new Promise((res) => setTimeout(res, 300))
+      }
     }
-    const sec = (performance.now() - t0) / 1000
-    if (sec <= 0) return null
-    return (bytes * 8) / sec / 1e6
+    const active = activeMs / 1000
+    if (sent < 50000 || active <= 0) return null
+    return (sent * 8) / active / 1e6
   }
 
   async function runSpeedTest() {
@@ -667,7 +702,12 @@ export function usePollo() {
       liveMbps.value = mbps.toFixed(1)
       trackPct.value = Math.min(100, (el / max) * 100)
     })
-    const up = await measureUp()
+    liveMbps.value = '0.0'
+    trackPct.value = 0
+    const up = await measureUp((mbps, el, max) => {
+      liveMbps.value = mbps.toFixed(1)
+      trackPct.value = Math.min(100, (el / max) * 100)
+    })
     if (speedMsgTimer) clearInterval(speedMsgTimer)
 
     const doneAt = Date.now()
