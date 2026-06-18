@@ -51,6 +51,7 @@ export interface Strings {
   region: string
   coords: string
   timezone: string
+  dossierTitle: string
 }
 
 export interface CliCmd {
@@ -136,6 +137,7 @@ export const STR: Record<Lang, Strings> = {
     region: 'Pollo Province',
     coords: 'Coop Coordinates',
     timezone: 'Pollo Time Zone',
+    dossierTitle: 'Your Pollo Dossier',
   },
   es: {
     tagline: '¿Cuál es tu IP, pollo? 🐔',
@@ -195,6 +197,7 @@ export const STR: Record<Lang, Strings> = {
     region: 'Provincia Pollo',
     coords: 'Coordenadas del Corral',
     timezone: 'Zona Horaria Pollo',
+    dossierTitle: 'Tu Expediente Pollo',
   },
 }
 
