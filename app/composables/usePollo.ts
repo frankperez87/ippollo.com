@@ -8,6 +8,7 @@ import {
   PRIV,
   type Lang,
 } from './usePolloData'
+import type { MeasurementConfig, Results } from '@cloudflare/speedtest'
 
 type Consent = 'unknown' | 'granted' | 'denied'
 type SpeedState = 'idle' | 'testing' | 'done'
@@ -17,6 +18,8 @@ interface Speed {
   down: number | null
   up: number | null
   ping: number | null
+  loadedLatency: number | null
+  jitter: number | null
 }
 
 const COOLDOWN_MS = 60000
@@ -71,6 +74,8 @@ export function usePollo() {
     down: null,
     up: null,
     ping: null,
+    loadedLatency: null,
+    jitter: null,
   }))
   const speedDoneAt = useState<number>('pollo-speeddoneat', () => 0)
   const tick = useState<number>('pollo-tick', () => 0) // forces cooldown countdown recompute
@@ -198,6 +203,14 @@ export function usePollo() {
     speed.value.ping == null ? '—' : String(Math.round(speed.value.ping)),
   )
   const speedTier = computed(() => tierFor(speed.value.down, lang.value))
+  const loadedLatencyText = computed(() =>
+    speed.value.loadedLatency == null
+      ? '—'
+      : String(Math.round(speed.value.loadedLatency)),
+  )
+  const jitterText = computed(() =>
+    speed.value.jitter == null ? '—' : speed.value.jitter.toFixed(1),
+  )
 
   const copyLabel = computed(() => (copied.value ? t.value.copied : t.value.copy))
   const bragLabel = computed(() =>
@@ -533,159 +546,20 @@ export function usePollo() {
     }, 1000)
   }
 
-  async function measurePing(): Promise<number | null> {
-    const times: number[] = []
-    for (let i = 0; i < 5; i++) {
-      const t0 = performance.now()
-      try {
-        await fetch(
-          'https://speed.cloudflare.com/__down?bytes=1&t=' + Math.random(),
-          { cache: 'no-store' },
-        )
-      } catch {
-        return null
-      }
-      times.push(performance.now() - t0)
-    }
-    times.sort((a, b) => a - b)
-    return times[0]
-  }
-
-  async function measureDown(
-    onProgress: (mbps: number, wall: number, max: number) => void,
-  ): Promise<number | null> {
-    // Cloudflare's __down caps request size, so loop fixed-size chunks over a
-    // time budget, adapting chunk size to the measured rate. Each chunk retries
-    // with backoff on transient failure; throughput is over ACTIVE transfer time.
-    const t0 = performance.now()
-    const budgetMs = 7000
-    let received = 0
-    let activeMs = 0
-    let chunk = 4000000
-    let fails = 0
-    while (performance.now() - t0 < budgetMs) {
-      const cs = performance.now()
-      let len = 0
-      let ok = false
-      const ctrl = new AbortController()
-      const to = setTimeout(() => {
-        try {
-          ctrl.abort()
-        } catch {
-          /* noop */
-        }
-      }, 9000)
-      try {
-        const r = await fetch(
-          'https://speed.cloudflare.com/__down?bytes=' + chunk + '&t=' + Math.random(),
-          { cache: 'no-store', signal: ctrl.signal },
-        )
-        if (!r.ok) throw new Error('HTTP ' + r.status)
-        const b = await r.arrayBuffer()
-        len = b.byteLength
-        ok = true
-      } catch {
-        ok = false
-      } finally {
-        clearTimeout(to)
-      }
-
-      if (ok) {
-        const cd = performance.now() - cs
-        received += len
-        activeMs += cd
-        fails = 0
-        const wall = (performance.now() - t0) / 1000
-        const active = activeMs / 1000
-        if (onProgress && active > 0)
-          onProgress((received * 8) / active / 1e6, wall, budgetMs / 1000)
-        if (cd > 0)
-          chunk = Math.min(
-            25000000,
-            Math.max(2000000, Math.round((len / (cd / 1000)) * 1.0)),
-          )
-      } else {
-        fails++
-        if (fails >= 4) break
-        chunk = Math.max(2000000, Math.round(chunk / 2))
-        await new Promise((res) => setTimeout(res, 300))
-      }
-    }
-    const active = activeMs / 1000
-    if (received < 50000 || active <= 0) return null
-    return (received * 8) / active / 1e6
-  }
-
-  async function measureUp(
-    onProgress: (mbps: number, wall: number, max: number) => void,
-  ): Promise<number | null> {
-    // Mirror measureDown: a single short POST never escapes TCP slow-start and
-    // its fixed round-trip latency dominates, so loop fixed-size chunks over a
-    // time budget, adapting chunk size to the measured rate. Each chunk retries
-    // with backoff on transient failure; throughput is over ACTIVE transfer time.
-    const t0 = performance.now()
-    const budgetMs = 7000
-    const buf = new Uint8Array(25000000)
-    let sent = 0
-    let activeMs = 0
-    let chunk = 2000000
-    let fails = 0
-    while (performance.now() - t0 < budgetMs) {
-      const cs = performance.now()
-      let ok = false
-      const ctrl = new AbortController()
-      const to = setTimeout(() => {
-        try {
-          ctrl.abort()
-        } catch {
-          /* noop */
-        }
-      }, 9000)
-      try {
-        const r = await fetch('https://speed.cloudflare.com/__up', {
-          method: 'POST',
-          body: buf.subarray(0, chunk),
-          cache: 'no-store',
-          signal: ctrl.signal,
-        })
-        if (!r.ok) throw new Error('HTTP ' + r.status)
-        ok = true
-      } catch {
-        ok = false
-      } finally {
-        clearTimeout(to)
-      }
-
-      if (ok) {
-        const cd = performance.now() - cs
-        sent += chunk
-        activeMs += cd
-        fails = 0
-        const wall = (performance.now() - t0) / 1000
-        const active = activeMs / 1000
-        if (onProgress && active > 0)
-          onProgress((sent * 8) / active / 1e6, wall, budgetMs / 1000)
-        if (cd > 0)
-          chunk = Math.min(
-            25000000,
-            Math.max(2000000, Math.round((chunk / (cd / 1000)) * 1.0)),
-          )
-      } else {
-        fails++
-        if (fails >= 4) break
-        chunk = Math.max(2000000, Math.round(chunk / 2))
-        await new Promise((res) => setTimeout(res, 300))
-      }
-    }
-    const active = activeMs / 1000
-    if (sent < 50000 || active <= 0) return null
-    return (sent * 8) / active / 1e6
-  }
+  // Latency, download, and upload are all measured by the official
+  // @cloudflare/speedtest engine, imported lazily inside runSpeedTest().
 
   async function runSpeedTest() {
     if (speed.value.state === 'testing') return
     if (speedDoneAt.value && Date.now() - speedDoneAt.value < COOLDOWN_MS) return
-    speed.value = { state: 'testing', down: null, up: null, ping: null }
+    speed.value = {
+      state: 'testing',
+      down: null,
+      up: null,
+      ping: null,
+      loadedLatency: null,
+      jitter: null,
+    }
     liveMbps.value = '0.0'
     trackPct.value = 0
     const msgs = STR[lang.value].speedMsgs
@@ -697,31 +571,95 @@ export function usePollo() {
       statusMsg.value = msgs[mi % msgs.length]
     }, 1300)
 
-    const ping = await measurePing()
-    const down = await measureDown((mbps, el, max) => {
-      liveMbps.value = mbps.toFixed(1)
-      trackPct.value = Math.min(100, (el / max) * 100)
-    })
-    liveMbps.value = '0.0'
-    trackPct.value = 0
-    const up = await measureUp((mbps, el, max) => {
-      liveMbps.value = mbps.toFixed(1)
-      trackPct.value = Math.min(100, (el / max) * 100)
-    })
-    if (speedMsgTimer) clearInterval(speedMsgTimer)
+    // The Cloudflare engine is browser-only — import it lazily so it never runs
+    // during static prerender and stays out of the initial page bundle.
+    const { default: SpeedTest } = await import('@cloudflare/speedtest')
 
-    const doneAt = Date.now()
-    try {
-      localStorage.setItem(
-        'ippollo-speed',
-        JSON.stringify({ down, up, ping, ts: doneAt }),
-      )
-    } catch {
-      /* noop */
+    // A single TCP flow can't saturate a fast link, so the engine fans out
+    // parallel requests per payload size, ramps up, and reports a high-percentile
+    // rate — the methodology behind speed.cloudflare.com. We omit the WebRTC
+    // packet-loss phase (not shown) and disable AIM logging to stay request-light.
+    const measurements: MeasurementConfig[] = [
+      { type: 'latency', numPackets: 20 },
+      { type: 'download', bytes: 1e5, count: 1, bypassMinDuration: true },
+      { type: 'download', bytes: 1e5, count: 9 },
+      { type: 'download', bytes: 1e6, count: 8 },
+      { type: 'download', bytes: 1e7, count: 6 },
+      { type: 'download', bytes: 2.5e7, count: 4 },
+      { type: 'download', bytes: 1e8, count: 3 },
+      { type: 'upload', bytes: 1e5, count: 8 },
+      { type: 'upload', bytes: 1e6, count: 6 },
+      { type: 'upload', bytes: 1e7, count: 4 },
+      { type: 'upload', bytes: 2.5e7, count: 4 },
+      { type: 'upload', bytes: 5e7, count: 3 },
+    ]
+    const engine = new SpeedTest({
+      autoStart: false,
+      logAimApiUrl: null,
+      measureDownloadLoadedLatency: true,
+      measureUploadLoadedLatency: true,
+      measurements,
+    })
+
+    function finalize(results: Results) {
+      if (speedMsgTimer) clearInterval(speedMsgTimer)
+      const s = results.getSummary()
+      const toMbps = (bps: number | undefined) =>
+        typeof bps === 'number' && isFinite(bps) ? bps / 1e6 : null
+      const toMs = (v: number | null | undefined) =>
+        typeof v === 'number' && isFinite(v) ? v : null
+      const down = toMbps(s.download)
+      const up = toMbps(s.upload)
+      const ping = toMs(s.latency)
+      const loadedLatency = toMs(s.downLoadedLatency)
+      const jitter = toMs(s.jitter)
+      const doneAt = Date.now()
+      try {
+        localStorage.setItem(
+          'ippollo-speed',
+          JSON.stringify({ down, up, ping, loadedLatency, jitter, ts: doneAt }),
+        )
+      } catch {
+        /* noop */
+      }
+      speed.value = { state: 'done', down, up, ping, loadedLatency, jitter }
+      speedDoneAt.value = doneAt
+      startCooldown()
     }
-    speed.value = { state: 'done', down, up, ping }
-    speedDoneAt.value = doneAt
-    startCooldown()
+
+    await new Promise<void>((resolve) => {
+      let settled = false
+      const done = () => {
+        if (settled) return
+        settled = true
+        resolve()
+      }
+      engine.onResultsChange = ({ type }) => {
+        let live: number | undefined
+        if (type === 'upload') live = engine.results.getUploadBandwidth()
+        else if (type === 'download')
+          live = engine.results.getDownloadBandwidth()
+        else return
+        if (typeof live === 'number' && isFinite(live))
+          liveMbps.value = (live / 1e6).toFixed(1)
+      }
+      engine.onPhaseChange = ({ measurementId }) => {
+        trackPct.value = Math.min(
+          100,
+          Math.round((measurementId / (measurements.length - 1)) * 100),
+        )
+      }
+      engine.onFinish = (results) => {
+        trackPct.value = 100
+        finalize(results)
+        done()
+      }
+      engine.onError = () => {
+        finalize(engine.results)
+        done()
+      }
+      engine.play()
+    })
   }
 
   // ---- save card (canvas → 1080² PNG) ----
@@ -873,7 +811,14 @@ export function usePollo() {
     try {
       const sp = JSON.parse(localStorage.getItem('ippollo-speed') || 'null')
       if (sp && typeof sp.ts === 'number') {
-        speed.value = { state: 'done', down: sp.down, up: sp.up, ping: sp.ping }
+        speed.value = {
+          state: 'done',
+          down: sp.down,
+          up: sp.up,
+          ping: sp.ping,
+          loadedLatency: sp.loadedLatency ?? null,
+          jitter: sp.jitter ?? null,
+        }
         speedDoneAt.value = sp.ts
       }
     } catch {
@@ -954,6 +899,8 @@ export function usePollo() {
     downText,
     upText,
     pingText,
+    loadedLatencyText,
+    jitterText,
     speedTier,
     copyLabel,
     bragLabel,

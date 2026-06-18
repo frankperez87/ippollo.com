@@ -8,6 +8,8 @@ const {
   downText,
   upText,
   pingText,
+  loadedLatencyText,
+  jitterText,
   speedTier,
   cooling,
   speedCountdownLabel,
@@ -119,6 +121,22 @@ const isDone = computed(() => speed.value.state === 'done')
           <div class="font-body text-[11px] font-semibold uppercase tracking-[1px] text-sub">
             {{ t.pingL }}
           </div>
+        </div>
+      </div>
+      <div class="mt-3 grid grid-cols-2 gap-3">
+        <div
+          class="flex items-center justify-center gap-[7px] rounded-[12px] border-[2px] border-ink bg-bg2 px-2 py-[10px]"
+        >
+          <span class="text-[15px]">⏱️</span>
+          <span class="font-mono text-[18px] font-bold leading-none text-ink">{{ loadedLatencyText }}</span>
+          <span class="font-body text-[10px] font-semibold uppercase tracking-[0.5px] text-sub">{{ t.loadedL }}</span>
+        </div>
+        <div
+          class="flex items-center justify-center gap-[7px] rounded-[12px] border-[2px] border-ink bg-bg2 px-2 py-[10px]"
+        >
+          <span class="text-[15px]">🪶</span>
+          <span class="font-mono text-[18px] font-bold leading-none text-ink">{{ jitterText }}</span>
+          <span class="font-body text-[10px] font-semibold uppercase tracking-[0.5px] text-sub">{{ t.jitterL }}</span>
         </div>
       </div>
       <div

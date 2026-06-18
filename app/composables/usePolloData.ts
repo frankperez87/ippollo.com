@@ -29,6 +29,8 @@ export interface Strings {
   dl: string
   ul: string
   pingL: string
+  loadedL: string
+  jitterL: string
   speedMsgs: string[]
   consentText: string
   consentLearn: string
@@ -108,6 +110,8 @@ export const STR: Record<Lang, Strings> = {
     dl: 'Mbps down',
     ul: 'Mbps up',
     pingL: 'ms ping',
+    loadedL: 'ms loaded',
+    jitterL: 'ms jitter',
     speedMsgs: [
       'Warming up the coop…',
       'Flapping at full speed…',
@@ -168,6 +172,8 @@ export const STR: Record<Lang, Strings> = {
     dl: 'Mbps bajada',
     ul: 'Mbps subida',
     pingL: 'ms ping',
+    loadedL: 'ms con carga',
+    jitterL: 'ms jitter',
     speedMsgs: [
       'Calentando el gallinero…',
       'Aleteando a toda velocidad…',
